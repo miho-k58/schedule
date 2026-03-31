@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>週間スケジュール 2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:sans-serif;background:#fff;color:#222;padding:8px;}
+.wrap{padding:0.5rem 0;}
+.nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.nav button{font-size:13px;padding:6px 10px;cursor:pointer;border:1px solid #aaa;border-radius:8px;background:transparent;color:#222;white-space:nowrap;-webkit-tap-highlight-color:transparent;}
+.nav button:active{background:#f0f0f0;}
+.nav .wlabel{font-size:13px;font-weight:500;flex:1;text-align:center;line-height:1.4;min-width:120px;}
+.status{font-size:11px;color:#888;text-align:center;margin-bottom:6px;min-height:16px;}
+.status.ok{color:#3B6D11;}
+.status.err{color:#A32D2D;}
+.setup-box{background:#E6F1FB;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.8;}
+.setup-box input{width:100%;font-size:13px;padding:6px 8px;border:1px solid #aaa;border-radius:6px;margin-top:4px;}
+.setup-box button{margin-top:8px;font-size:13px;padding:6px 16px;cursor:pointer;border:1px solid #185FA5;border-radius:8px;background:#185FA5;color:#fff;width:100%;}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{min-width:480px;width:100%;border-collapse:collapse;table-layout:fixed;}
+th,td{border:0.5px solid #bbb;font-size:11px;vertical-align:top;}
+.th-period{width:24px;background:#f5f5f5;text-align:center;padding:3px 1px;font-weight:500;color:#666;}
+.th-period .period-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1.3;}
+.th-period .period-inner span{font-size:10px;display:block;}
+.th-date{text-align:center;padding:4px 2px;background:#f5f5f5;}
+.th-date .wd{font-size:10px;color:#888;}
+.th-date .dt{font-size:13px;font-weight:500;color:#222;}
+.th-date.today .dt{background:#378ADD;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;margin:0 auto;}
+.th-date.sun .wd,.th-date.sun .dt{color:#D85A30;}
+.th-date.sat .wd,.th-date.sat .dt{color:#185FA5;}
+.th-date.today .wd{color:#888;}
+.cell{padding:2px;min-height:56px;vertical-align:top;}
+.cell.free-row{min-height:36px;background:#f9f9f9;}
+.cell.holiday-bg{background:#FAECE7;}
+.holiday-label{font-size:9px;color:#993C1D;display:block;margin-bottom:1px;}
+select{width:100%;font-size:10px;border:none;background:transparent;color:#222;cursor:pointer;padding:1px 0;-webkit-appearance:auto;appearance:auto;}
+select:focus{outline:none;}
+.memo{width:100%;font-size:10px;border:none;background:transparent;color:#222;resize:none;height:32px;padding:1px;}
+.memo:focus{outline:none;background:#f5f5f5;}
+@media(min-width:600px){
+  body{padding:16px;}
+  table{min-width:unset;}
+  th,td{font-size:12px;}
+  .th-period{width:28px;}
+  .th-period .period-inner span{font-size:11px;}
+  .th-date .wd{font-size:11px;}
+  .th-date .dt{font-size:14px;}
+  .th-date.today .dt{width:24px;height:24px;}
+  .cell{min-height:64px;padding:3px;}
+  .cell.free-row{min-height:40px;}
+  select{font-size:11px;}
+  .memo{font-size:11px;height:36px;}
+  .holiday-label{font-size:10px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div id="setup-box" class="setup-box">
+  <div>☁️ <strong>クラウド保存の設定</strong></div>
+  <div style="margin-top:6px;font-size:12px;color:#185FA5;">はじめに「合言葉（パスワード）」を決めてください。<br>同じ合言葉を使えば、どの端末でもデータが共有されます。</div>
+  <input type="text" id="pwd-input" placeholder="例：yamadaclass2026" maxlength="40">
+  <button id="pwd-btn">この合言葉で始める</button>
+</div>
+
+<div id="main" style="display:none;">
+  <div class="nav">
+    <button id="prev">&#8592; 前週</button>
+    <div class="wlabel" id="wlabel"></div>
+    <button id="next">次週 &#8594;</button>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="tbl-wrap">
+  <table id="sched"></table>
+  </div>
+  <div style="margin-top:10px;text-align:right;">
+    <button id="change-pwd" style="font-size:11px;color:#888;border:none;background:none;cursor:pointer;padding:4px;">合言葉を変更する</button>
+  </div>
+</div>
+
+</div>
+<script>
+const DAYS=['日','月','火','水','木','金','土'];
+const HOLIDAYS={
+  '2026-1-1':'元日','2026-1-12':'成人の日','2026-2-11':'建国記念の日',
+  '2026-2-23':'天皇誕生日','2026-3-20':'春分の日','2026-4-29':'昭和の日',
+  '2026-5-3':'憲法記念日','2026-5-4':'みどりの日','2026-5-5':'こどもの日',
+  '2026-7-20':'海の日','2026-8-11':'山の日','2026-9-21':'敬老の日',
+  '2026-9-23':'秋分の日','2026-10-12':'スポーツの日','2026-11-3':'文化の日',
+  '2026-11-23':'勤労感謝の日'
+};
+const OPTIONS_FREE=['','予定あり','その他'];
+const OPTIONS_P1=['','着替え・運動・朝の会','朝の会','運動（教室）・朝の会','飯富フェス','遠足'];
+const OPTIONS_P2_4=['','国語','算数','生活','遊びの指導','自立','図工','音楽','体育','入学おめでとう会','卒業おめでとう会','学部集会','校外学習','飯富フェス','遠足'];
+const OPTIONS_P5=['','国語','算数','生活','遊びの指導','自立','図工','音楽','体育','入学おめでとう会','卒業おめでとう会','学部集会','校外学習','面談'];
+const OPTIONS_P6=['','学年会','学習指導部','校務分掌','職員会議','臨時職員会議','研修'];
+
+function getOptions(p){
+  if(p==='予定')return OPTIONS_FREE;
+  if(p===1)return OPTIONS_P1;
+  if(p>=2&&p<=4)return OPTIONS_P2_4;
+  if(p===5)return OPTIONS_P5;
+  if(p===6)return OPTIONS_P6;
+  return OPTIONS_P2_4;
+}
+
+let stored={};
+let saveTimer=null;
+let pwdKey='';
+
+function setStatus(msg,type){
+  const el=document.getElementById('status');
+  el.textContent=msg;
+  el.className='status'+(type?' '+type:'');
+}
+
+async function loadFromCloud(){
+  setStatus('読み込み中…','');
+  try{
+    const r=await fetch(`https://api.jsonbin.io/v3/b/${pwdKey}`,{
+      headers:{'X-Master-Key':'$2a$10$placeholder','X-Access-Key':'$2a$10$placeholder'}
+    });
+    if(!r.ok)throw new Error();
+    const j=await r.json();
+    stored=j.record||{};
+    setStatus('クラウドから読み込みました','ok');
+  }catch(e){
+    stored={};
+    setStatus('新しいデータで開始します','ok');
+  }
+}
+
+async function saveToCloud(){
+  setStatus('保存中…','');
+  try{
+    const r=await fetch(`https://kvdb.io/${pwdKey}/data`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(stored)
+    });
+    if(!r.ok)throw new Error();
+    setStatus('保存しました ✓','ok');
+  }catch(e){
+    try{
+      localStorage.setItem('schedule_'+pwdKey,JSON.stringify(stored));
+      setStatus('ローカルに保存しました（オフライン）','ok');
+    }catch(e2){setStatus('保存に失敗しました','err');}
+  }
+}
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(saveToCloud,1500);
+}
+
+async function startApp(pwd){
+  if(!pwd){alert('合言葉を入力してください');return;}
+  pwdKey=pwd.trim();
+  localStorage.setItem('schedule_pwd',pwdKey);
+  document.getElementById('setup-box').style.display='none';
+  document.getElementById('main').style.display='block';
+
+  const local=localStorage.getItem('schedule_'+pwdKey);
+  if(local)try{stored=JSON.parse(local);}catch(e){}
+
+  setStatus('読み込み中…','');
+  try{
+    const r=await fetch(`https://kvdb.io/HnVcPWMRguG9nQFCLpGBiT/${encodeURIComponent(pwdKey)}`,{cache:'no-cache'});
+    if(r.ok){
+      const txt=await r.text();
+      if(txt&&txt!=='null'){stored=JSON.parse(txt);setStatus('クラウドから読み込みました ✓','ok');}
+      else setStatus('新しいデータで開始します','ok');
+    } else setStatus('ローカルデータで開始します','ok');
+  }catch(e){setStatus('オフラインモードで開始します','ok');}
+
+  render();
+}
+
+document.getElementById('pwd-btn').addEventListener('click',()=>{
+  startApp(document.getElementById('pwd-input').value);
+});
+document.getElementById('pwd-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter')startApp(document.getElementById('pwd-input').value);
+});
+document.getElementById('change-pwd').addEventListener('click',()=>{
+  localStorage.removeItem('schedule_pwd');
+  location.reload();
+});
+
+const savedPwd=localStorage.getItem('schedule_pwd');
+if(savedPwd){
+  document.getElementById('pwd-input').value=savedPwd;
+  startApp(savedPwd);
+}
+
+function getMonday(d){
+  const dt=new Date(d);const day=dt.getDay();
+  const diff=day===0?-6:1-day;
+  dt.setDate(dt.getDate()+diff);dt.setHours(0,0,0,0);return dt;
+}
+function fmt(d){return`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;}
+function fmtJP(d){return`${d.getMonth()+1}/${d.getDate()}`;}
+
+const today=new Date();
+let currentMonday=getMonday(today);
+
+function makeSelect(key,opts){
+  const sel=document.createElement('select');
+  opts.forEach(o=>{const opt=document.createElement('option');opt.value=o;opt.textContent=o||'—';sel.appendChild(opt);});
+  if(stored[key]&&stored[key].sel)sel.value=stored[key].sel;
+  sel.addEventListener('change',e=>{
+    if(!stored[key])stored[key]={};
+    stored[key].sel=e.target.value;
+    scheduleSave();
+  });
+  return sel;
+}
+
+function makeMemo(key){
+  const ta=document.createElement('textarea');
+  ta.className='memo';ta.placeholder='メモ';
+  if(stored[key]&&stored[key].memo)ta.value=stored[key].memo;
+  ta.addEventListener('input',e=>{
+    if(!stored[key])stored[key]={};
+    stored[key].memo=e.target.value;
+    scheduleSave();
+  });
+  return ta;
+}
+
+function makeCell(key,period,hname,isFree){
+  const td=document.createElement('td');
+  td.className='cell'+(isFree?' free-row':'')+(hname?' holiday-bg':'');
+  if(hname){const l=document.createElement('span');l.className='holiday-label';l.textContent=hname;td.appendChild(l);}
+  td.appendChild(makeSelect(key,getOptions(period)));
+  td.appendChild(makeMemo(key));
+  return td;
+}
+
+function makePeriodHeader(label,isNumber){
+  const td=document.createElement('td');td.className='th-period';
+  if(isNumber){
+    const inner=document.createElement('div');inner.className='period-inner';
+    for(const ch of label){const s=document.createElement('span');s.textContent=ch;inner.appendChild(s);}
+    td.appendChild(inner);
+  } else {td.style.writingMode='vertical-rl';td.textContent=label;}
+  return td;
+}
+
+function render(){
+  const mon=new Date(currentMonday);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  document.getElementById('wlabel').textContent=`${mon.getFullYear()}年 ${fmtJP(mon)}〜${fmtJP(sun)}`;
+  const dates=[];
+  for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);dates.push(d);}
+  const todayStr=fmt(today);
+  const tbl=document.getElementById('sched');tbl.innerHTML='';
+  const thead=document.createElement('thead');
+  const hr=document.createElement('tr');
+  const th0=document.createElement('th');th0.className='th-period';hr.appendChild(th0);
+  dates.forEach(d=>{
+    const th=document.createElement('th');const dow=d.getDay();
+    let cls='th-date';
+    if(dow===0)cls+=' sun';if(dow===6)cls+=' sat';if(fmt(d)===todayStr)cls+=' today';
+    th.className=cls;
+    th.innerHTML=`<div class="wd">${DAYS[dow]}</div><div class="dt">${d.getDate()}</div>`;
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr);tbl.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  function addRow(label,period,isFree,isNumber){
+    const tr=document.createElement('tr');
+    tr.appendChild(makePeriodHeader(label,isNumber));
+    dates.forEach(d=>{
+      const key=`${fmt(d)}-${label}`;
+      const hkey=`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+      tr.appendChild(makeCell(key,period,HOLIDAYS[hkey],isFree));
+    });
+    tbody.appendChild(tr);
+  }
+  addRow('予定','予定',true,false);
+  for(let p=1;p<=6;p++)addRow(`${p}限`,p,false,true);
+  tbl.appendChild(tbody);
+}
+
+document.getElementById('prev').addEventListener('click',()=>{currentMonday.setDate(currentMonday.getDate()-7);render();});
+document.getElementById('next').addEventListener('click',()=>{currentMonday.setDate(currentMonday.getDate()+7);render();});
+</script>
+</body>
+</html>
